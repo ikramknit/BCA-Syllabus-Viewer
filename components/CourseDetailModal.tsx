@@ -14,6 +14,12 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
   const [loadingUnit, setLoadingUnit] = useState<string | null>(null);
   const [errorUnit, setErrorUnit] = useState<string | null>(null);
 
+  // State for full study guide generation
+  const [isGeneratingGuide, setIsGeneratingGuide] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [showStudyGuide, setShowStudyGuide] = useState(false);
+
+
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -28,6 +34,38 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
     };
   }, [onClose]);
 
+  const getUnitMaterial = useCallback(async (unit: UnitContent) => {
+    const unitId = `unit-${unit.unit}`;
+    setLoadingUnit(unitId);
+    setErrorUnit(null);
+
+    try {
+      const prompt = `Provide detailed study material for the following topic from a computer science syllabus.
+      Topic Title: ${unit.title}
+      Syllabus Description: ${unit.description}
+      
+      Please explain the key concepts in detail, provide clear examples, and include a few practice questions to test understanding. Format the output for readability on a web page using markdown-like headers for structure.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+
+      const newMaterial = response.text;
+      setStudyMaterials(prev => ({ ...prev, [unitId]: newMaterial }));
+      return newMaterial;
+    } catch (error) {
+      console.error("Error generating study material:", error);
+      setErrorUnit(unitId);
+      const errorMessage = "Sorry, I couldn't generate study material for this topic right now. Please try again later.";
+      setStudyMaterials(prev => ({ ...prev, [unitId]: errorMessage }));
+      return errorMessage;
+    } finally {
+      setLoadingUnit(null);
+    }
+  }, [ai]);
+
+
   const handleUnitClick = useCallback(async (unit: UnitContent) => {
     const unitId = `unit-${unit.unit}`;
 
@@ -38,31 +76,35 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
 
     setOpenUnitId(unitId);
 
-    if (!studyMaterials[unitId]) {
-      setLoadingUnit(unitId);
-      setErrorUnit(null);
-      try {
-        const prompt = `Provide detailed study material for the following topic from a computer science syllabus.
-        Topic Title: ${unit.title}
-        Syllabus Description: ${unit.description}
-        
-        Please explain the key concepts in detail, provide clear examples, and include a few practice questions to test understanding. Format the output for readability on a web page.`;
-
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt,
-        });
-
-        setStudyMaterials(prev => ({ ...prev, [unitId]: response.text }));
-      } catch (error) {
-        console.error("Error generating study material:", error);
-        setErrorUnit(unitId);
-        setStudyMaterials(prev => ({ ...prev, [unitId]: "Sorry, I couldn't generate study material for this topic right now. Please try again later." }));
-      } finally {
-        setLoadingUnit(null);
-      }
+    if (!studyMaterials[unitId] || errorUnit === unitId) {
+      await getUnitMaterial(unit);
     }
-  }, [ai, openUnitId, studyMaterials]);
+  }, [openUnitId, studyMaterials, errorUnit, getUnitMaterial]);
+  
+  const handleGenerateFullGuide = useCallback(async () => {
+    if (!course.details?.courseContent) return;
+
+    setIsGeneratingGuide(true);
+    setGenerationProgress(0);
+    setShowStudyGuide(false);
+    
+    const units = course.details.courseContent;
+    
+    for (let i = 0; i < units.length; i++) {
+        const unit = units[i];
+        const unitId = `unit-${unit.unit}`;
+        setGenerationProgress(i + 1);
+
+        // Fetch material only if it's not already successfully fetched
+        if (!studyMaterials[unitId] || errorUnit === unitId) {
+           await getUnitMaterial(unit);
+        }
+    }
+    
+    setIsGeneratingGuide(false);
+    setShowStudyGuide(true);
+
+  }, [course.details?.courseContent, getUnitMaterial, studyMaterials, errorUnit]);
 
 
   if (!course.details) {
@@ -113,7 +155,7 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
                       <div id={`unit-content-${unitId}`} className="p-4 border-t border-gray-200 bg-white">
                         {loadingUnit === unitId && (
                           <div className="flex items-center space-x-2 text-gray-500 animate-pulse">
-                            <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <svg className="h-5 w-5 text-blue-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
@@ -153,7 +195,29 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
       </div>
     );
   };
+  
+  const renderFullStudyGuide = () => {
+    return (
+      <div>
+        {details.courseContent.map(unit => {
+          const unitId = `unit-${unit.unit}`;
+          const material = studyMaterials[unitId];
+          const hasError = errorUnit === unitId;
 
+          return (
+            <div key={unitId} className="mb-8">
+              <h4 className="text-xl font-bold text-gray-800 border-b-2 border-blue-200 pb-2 mb-4">
+                UNIT {unit.unit}: {unit.title}
+              </h4>
+              <div className={`prose prose-sm max-w-none text-gray-800 ${hasError ? 'text-red-600' : ''}`}>
+                 <pre className="whitespace-pre-wrap font-sans bg-gray-50 p-4 rounded-md">{material || "Material not generated yet."}</pre>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -184,14 +248,41 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
         </div>
 
         <div className="p-6">
-          {renderSection("Course Objectives", details.courseObjectives)}
-          {renderUnits(details.courseContent)}
-          {renderLabProblems(details.labPrograms)}
-          {renderSection("Text Books", details.textBooks)}
-          {renderSection("Reference Books", details.referenceBooks)}
-          {renderSection("Web Resources", details.webResources)}
-          {renderSection("Suggestive Laboratory Experiments", details.suggestiveLabs)}
-          {renderSection("Hardware", details.labHardware)}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+               <h4 className="font-bold text-blue-800">Interactive Study Tools</h4>
+               <p className="text-sm text-blue-700">Generate a complete study guide for this course.</p>
+            </div>
+            {isGeneratingGuide ? (
+              <div className="text-blue-700 font-semibold text-center">
+                <p>Generating guide...</p>
+                <p className="text-xs">({generationProgress} / {details.courseContent.length} units complete)</p>
+              </div>
+            ) : (
+               <button 
+                  onClick={showStudyGuide ? () => setShowStudyGuide(false) : handleGenerateFullGuide}
+                  className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-blue-300 disabled:cursor-not-allowed flex-shrink-0"
+                  disabled={isGeneratingGuide}
+                >
+                  {showStudyGuide ? 'Back to Syllabus View' : 'Generate Full Study Guide'}
+                </button>
+            )}
+          </div>
+
+          {showStudyGuide ? (
+            renderFullStudyGuide()
+          ) : (
+            <>
+              {renderSection("Course Objectives", details.courseObjectives)}
+              {renderUnits(details.courseContent)}
+              {renderLabProblems(details.labPrograms)}
+              {renderSection("Text Books", details.textBooks)}
+              {renderSection("Reference Books", details.referenceBooks)}
+              {renderSection("Web Resources", details.webResources)}
+              {renderSection("Suggestive Laboratory Experiments", details.suggestiveLabs)}
+              {renderSection("Hardware", details.labHardware)}
+            </>
+          )}
         </div>
       </div>
     </div>
