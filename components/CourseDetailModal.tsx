@@ -19,35 +19,6 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
   const [generationProgress, setGenerationProgress] = useState(0);
   const [showStudyGuide, setShowStudyGuide] = useState(false);
 
-  useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'unset';
-    };
-  }, [onClose]);
-
-  const parseMarkdown = (text: string) => {
-    if (!text) return { __html: '' };
-    // A simple parser for basic markdown formatting.
-    const html = text
-      .replace(/^\s*# (.*)/gm, '<h1 class="text-2xl font-bold my-4">$1</h1>')
-      .replace(/^\s*## (.*)/gm, '<h2 class="text-xl font-semibold my-3">$1</h2>')
-      .replace(/^\s*### (.*)/gm, '<h3 class="text-lg font-semibold my-2">$1</h3>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/^\s*\*\s(.*)/gm, '<li class="ml-6">$1</li>')
-      .replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 my-2">$1</ul>')
-      .replace(/\n/g, '<br />');
-    return { __html: html };
-  };
-
   const getUnitMaterial = useCallback(async (unit: UnitContent) => {
     const unitId = `unit-${unit.unit}`;
     setLoadingUnit(unitId);
@@ -79,7 +50,6 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
     }
   }, [ai]);
 
-
   const handleUnitClick = useCallback(async (unit: UnitContent) => {
     const unitId = `unit-${unit.unit}`;
 
@@ -95,6 +65,44 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
     }
   }, [openUnitId, studyMaterials, errorUnit, getUnitMaterial]);
   
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    document.body.style.overflow = 'hidden';
+    
+    // Automatically trigger study material generation for the first unit of the specified course.
+    if (course.courseCode === '0122301' && course.details?.courseContent?.[0]) {
+      handleUnitClick(course.details.courseContent[0]);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
+    // We disable the exhaustive-deps rule because we intentionally want this to run only once on mount.
+    // handleUnitClick depends on state but is safe for this initial call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose]);
+
+  const parseMarkdown = (text: string) => {
+    if (!text) return { __html: '' };
+    // A simple parser for basic markdown formatting.
+    const html = text
+      .replace(/^\s*# (.*)/gm, '<h1 class="text-2xl font-bold my-4">$1</h1>')
+      .replace(/^\s*## (.*)/gm, '<h2 class="text-xl font-semibold my-3">$1</h2>')
+      .replace(/^\s*### (.*)/gm, '<h3 class="text-lg font-semibold my-2">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^\s*\*\s(.*)/gm, '<li class="ml-6">$1</li>')
+      .replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 my-2">$1</ul>')
+      .replace(/\n/g, '<br />');
+    return { __html: html };
+  };
+
   const handleGenerateFullGuide = useCallback(async () => {
     if (!course.details?.courseContent) return;
 
