@@ -1,0 +1,5 @@
+{
+  "name": "BCA Syllabus Viewer",
+  "description": "An interactive web application to view the Bachelors of Computer Application (BCA) syllabus for Maa Shakumbhari University, Saharanpur, as per the 2025-26 session guidelines.",
+  "requestFramePermissions": []
+}
