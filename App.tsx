@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { syllabusData } from './data/syllabusData';
 import Header from './components/Header';
 import SemesterTabs from './components/SemesterTabs';
@@ -6,10 +6,13 @@ import SyllabusTable from './components/SyllabusTable';
 import Footer from './components/Footer';
 import CourseDetailModal from './components/CourseDetailModal';
 import { Semester, Course } from './types';
+import { GoogleGenAI } from '@google/genai';
 
 const App: React.FC = () => {
   const [activeSemesterId, setActiveSemesterId] = useState<string>(syllabusData[0].id);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.API_KEY as string }), []);
 
   const handleSelectSemester = useCallback((id: string) => {
     setActiveSemesterId(id);
@@ -53,7 +56,7 @@ const App: React.FC = () => {
       </main>
       
       {selectedCourse && (
-        <CourseDetailModal course={selectedCourse} onClose={handleCloseModal} />
+        <CourseDetailModal course={selectedCourse} onClose={handleCloseModal} ai={ai} />
       )}
     </div>
   );

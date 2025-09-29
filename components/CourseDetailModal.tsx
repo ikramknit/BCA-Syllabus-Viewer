@@ -1,12 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Course, UnitContent, LabProblemSection } from '../types';
+import { GoogleGenAI } from '@google/genai';
 
 interface CourseDetailModalProps {
   course: Course;
   onClose: () => void;
+  ai: GoogleGenAI;
 }
 
-const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose }) => {
+const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, ai }) => {
+  const [openUnitId, setOpenUnitId] = useState<string | null>(null);
+  const [studyMaterials, setStudyMaterials] = useState<Record<string, string>>({});
+  const [loadingUnit, setLoadingUnit] = useState<string | null>(null);
+  const [errorUnit, setErrorUnit] = useState<string | null>(null);
+
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -20,6 +27,43 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose }
       document.body.style.overflow = 'unset';
     };
   }, [onClose]);
+
+  const handleUnitClick = useCallback(async (unit: UnitContent) => {
+    const unitId = `unit-${unit.unit}`;
+
+    if (openUnitId === unitId) {
+      setOpenUnitId(null);
+      return;
+    }
+
+    setOpenUnitId(unitId);
+
+    if (!studyMaterials[unitId]) {
+      setLoadingUnit(unitId);
+      setErrorUnit(null);
+      try {
+        const prompt = `Provide detailed study material for the following topic from a computer science syllabus.
+        Topic Title: ${unit.title}
+        Syllabus Description: ${unit.description}
+        
+        Please explain the key concepts in detail, provide clear examples, and include a few practice questions to test understanding. Format the output for readability on a web page.`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+        });
+
+        setStudyMaterials(prev => ({ ...prev, [unitId]: response.text }));
+      } catch (error) {
+        console.error("Error generating study material:", error);
+        setErrorUnit(unitId);
+        setStudyMaterials(prev => ({ ...prev, [unitId]: "Sorry, I couldn't generate study material for this topic right now. Please try again later." }));
+      } finally {
+        setLoadingUnit(null);
+      }
+    }
+  }, [ai, openUnitId, studyMaterials]);
+
 
   if (!course.details) {
     return null;
@@ -44,13 +88,48 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose }
      return (
         <div className="mb-6">
           <h4 className="text-lg font-semibold text-gray-800 border-b-2 border-blue-200 pb-2 mb-3">Course Content</h4>
-          <div className="space-y-4">
-             {units.map((unit, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-md">
-                   <p className="font-semibold text-gray-700">UNIT {unit.unit}: {unit.title}</p>
-                   <p className="mt-1 text-sm text-gray-600">{unit.description}</p>
-                </div>
-             ))}
+          <div className="space-y-2">
+             {units.map((unit, index) => {
+                const unitId = `unit-${unit.unit}`;
+                const isOpen = openUnitId === unitId;
+
+                return (
+                  <div key={index} className="border border-gray-200 rounded-md overflow-hidden">
+                    <button
+                      className="w-full text-left p-4 bg-gray-50 hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:z-10 relative"
+                      onClick={() => handleUnitClick(unit)}
+                      aria-expanded={isOpen}
+                      aria-controls={`unit-content-${unitId}`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="pr-4">
+                          <p className="font-semibold text-gray-800">UNIT {unit.unit}: {unit.title}</p>
+                          <p className="mt-1 text-sm text-gray-600 font-normal">{unit.description}</p>
+                        </div>
+                        <svg className={`w-5 h-5 text-gray-500 transform transition-transform duration-300 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div id={`unit-content-${unitId}`} className="p-4 border-t border-gray-200 bg-white">
+                        {loadingUnit === unitId && (
+                          <div className="flex items-center space-x-2 text-gray-500 animate-pulse">
+                            <svg className="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Generating study material, please wait...</span>
+                          </div>
+                        )}
+                        {studyMaterials[unitId] && (
+                          <div className={`prose prose-sm max-w-none text-gray-800 ${errorUnit === unitId ? 'text-red-600' : ''}`}>
+                            <pre className="whitespace-pre-wrap font-sans bg-gray-50 p-3 rounded-md">{studyMaterials[unitId]}</pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+             })}
           </div>
         </div>
      )
