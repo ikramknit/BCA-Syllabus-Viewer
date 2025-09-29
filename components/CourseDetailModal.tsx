@@ -19,7 +19,6 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
   const [generationProgress, setGenerationProgress] = useState(0);
   const [showStudyGuide, setShowStudyGuide] = useState(false);
 
-
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -34,6 +33,21 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
     };
   }, [onClose]);
 
+  const parseMarkdown = (text: string) => {
+    if (!text) return { __html: '' };
+    // A simple parser for basic markdown formatting.
+    const html = text
+      .replace(/^\s*# (.*)/gm, '<h1 class="text-2xl font-bold my-4">$1</h1>')
+      .replace(/^\s*## (.*)/gm, '<h2 class="text-xl font-semibold my-3">$1</h2>')
+      .replace(/^\s*### (.*)/gm, '<h3 class="text-lg font-semibold my-2">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^\s*\*\s(.*)/gm, '<li class="ml-6">$1</li>')
+      .replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 my-2">$1</ul>')
+      .replace(/\n/g, '<br />');
+    return { __html: html };
+  };
+
   const getUnitMaterial = useCallback(async (unit: UnitContent) => {
     const unitId = `unit-${unit.unit}`;
     setLoadingUnit(unitId);
@@ -44,7 +58,7 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
       Topic Title: ${unit.title}
       Syllabus Description: ${unit.description}
       
-      Please explain the key concepts in detail, provide clear examples, and include a few practice questions to test understanding. Format the output for readability on a web page using markdown-like headers for structure.`;
+      Please explain the key concepts in detail, provide clear examples, and include a few practice questions to test understanding. Format the output using markdown for readability (e.g., use ### for headers, ** for bold, and * for list items).`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -163,9 +177,10 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
                           </div>
                         )}
                         {studyMaterials[unitId] && (
-                          <div className={`prose prose-sm max-w-none text-gray-800 ${errorUnit === unitId ? 'text-red-600' : ''}`}>
-                            <pre className="whitespace-pre-wrap font-sans bg-gray-50 p-3 rounded-md">{studyMaterials[unitId]}</pre>
-                          </div>
+                           <div
+                            className={`prose prose-sm max-w-none text-gray-800 ${errorUnit === unitId ? 'text-red-600' : ''}`}
+                            dangerouslySetInnerHTML={parseMarkdown(studyMaterials[unitId])}
+                          />
                         )}
                       </div>
                     )}
@@ -209,9 +224,10 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
               <h4 className="text-xl font-bold text-gray-800 border-b-2 border-blue-200 pb-2 mb-4">
                 UNIT {unit.unit}: {unit.title}
               </h4>
-              <div className={`prose prose-sm max-w-none text-gray-800 ${hasError ? 'text-red-600' : ''}`}>
-                 <pre className="whitespace-pre-wrap font-sans bg-gray-50 p-4 rounded-md">{material || "Material not generated yet."}</pre>
-              </div>
+              <div
+                className={`prose max-w-none text-gray-800 ${hasError ? 'text-red-600' : ''}`}
+                dangerouslySetInnerHTML={parseMarkdown(material || "Material not generated yet.")}
+              />
             </div>
           )
         })}
