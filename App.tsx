@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { GoogleGenAI } from "@google/genai";
 import { syllabusData } from './data/syllabusData';
 import Header from './components/Header';
 import SemesterTabs from './components/SemesterTabs';
@@ -6,6 +7,9 @@ import SyllabusTable from './components/SyllabusTable';
 import Footer from './components/Footer';
 import CourseDetailModal from './components/CourseDetailModal';
 import { Semester, Course } from './types';
+
+// Initialize the Google GenAI client
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const App: React.FC = () => {
   const [activeSemesterId, setActiveSemesterId] = useState<string>(syllabusData[0].id);
@@ -53,7 +57,11 @@ const App: React.FC = () => {
       </main>
       
       {selectedCourse && (
-        <CourseDetailModal course={selectedCourse} onClose={handleCloseModal} />
+        <CourseDetailModal 
+          course={selectedCourse} 
+          onClose={handleCloseModal} 
+          ai={ai} 
+        />
       )}
     </div>
   );
