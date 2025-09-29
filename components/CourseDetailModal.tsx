@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Course, UnitContent, LabProblemSection } from '../types';
 import { GoogleGenAI } from '@google/genai';
 
@@ -19,17 +19,36 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
   const [generationProgress, setGenerationProgress] = useState(0);
   const [showStudyGuide, setShowStudyGuide] = useState(false);
 
+  // State for detailed topic view
+  const [detailedTopic, setDetailedTopic] = useState<string | null>(null);
+  const [detailedContent, setDetailedContent] = useState<string | null>(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+
   const getUnitMaterial = useCallback(async (unit: UnitContent) => {
     const unitId = `unit-${unit.unit}`;
     setLoadingUnit(unitId);
     setErrorUnit(null);
 
     try {
-      const prompt = `Provide detailed study material for the following topic from a computer science syllabus.
-      Topic Title: ${unit.title}
-      Syllabus Description: ${unit.description}
-      
-      Please explain the key concepts in detail, provide clear examples, and include a few practice questions to test understanding. Format the output using markdown for readability (e.g., use ### for headers, ** for bold, and * for list items).`;
+      const prompt = `As an expert computer science educator, create a comprehensive study guide for the following topic, aimed at first-year university students (BCA program). The content should be structured, clear, and easy to understand, similar to high-quality educational articles on websites like GeeksforGeeks.
+
+**Course Unit:** ${unit.title}
+**Syllabus Details:** ${unit.description}
+
+Please structure the study guide as follows:
+1.  **Introduction:** Briefly introduce the main concepts of the unit (e.g., for "Set, Relation and Function", explain what they are and why they are fundamental in computer science).
+2.  **Key Concepts (in-depth):** For each major topic mentioned in the syllabus details, provide:
+    *   A clear definition.
+    *   Illustrative examples (use code snippets where applicable).
+    *   Explanation of properties or types.
+3.  **Summary:** A concise summary of the key takeaways from the unit.
+4.  **Practice Questions:** A set of 3-5 practice questions (with solutions or hints) to help students test their understanding.
+
+**Formatting:** Use Markdown for clear formatting. Use headings (###), bold text (**text**), bullet points (* item), and code blocks for examples.
+**Important for Interactivity:** For each key concept's title or sub-heading, wrap it in a special tag like this: \`[topic:The Topic Name]\`. For example: \`### [topic:Set Operations]\`. This will make the topics interactive.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -49,6 +68,66 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
       setLoadingUnit(null);
     }
   }, [ai]);
+
+  const handleTopicClick = useCallback(async (topic: string) => {
+    setDetailedTopic(topic);
+    setIsDetailLoading(true);
+    setDetailedContent(null);
+    setDetailError(null);
+
+    const currentUnit = course.details?.courseContent.find(u => `unit-${u.unit}` === openUnitId);
+    if (!currentUnit) {
+      setDetailError("Could not determine the context for this topic. Please close and reopen the unit.");
+      setIsDetailLoading(false);
+      return;
+    }
+    
+    const detailPrompt = `You are a computer science expert. Provide a detailed, in-depth explanation of the following topic for a first-year university student. Be thorough and provide clear examples, and code snippets where relevant.
+
+**Main Subject:** ${currentUnit.title}
+**Specific Topic to explain:** ${topic}
+
+Structure your explanation with:
+- A clear definition.
+- Core principles and properties.
+- Practical examples or use-cases in computer science.
+- A concise summary.
+
+Format your response using Markdown. Use headings, bold text, and lists to make it easy to read.`;
+
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: detailPrompt,
+        });
+        setDetailedContent(response.text);
+    } catch (error) {
+        console.error("Error generating detailed content:", error);
+        setDetailError("Failed to generate detailed content. Please try again.");
+    } finally {
+        setIsDetailLoading(false);
+    }
+  }, [ai, openUnitId, course.details?.courseContent]);
+
+  useEffect(() => {
+    const contentArea = contentRef.current;
+    if (!contentArea) return;
+
+    const handleClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        if (target.tagName === 'BUTTON' && target.dataset.topic) {
+            event.preventDefault();
+            handleTopicClick(target.dataset.topic);
+        }
+    };
+
+    contentArea.addEventListener('click', handleClick);
+
+    return () => {
+        contentArea.removeEventListener('click', handleClick);
+    };
+  }, [handleTopicClick]);
+
 
   const handleUnitClick = useCallback(async (unit: UnitContent) => {
     const unitId = `unit-${unit.unit}`;
@@ -92,6 +171,7 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
     if (!text) return { __html: '' };
     // A simple parser for basic markdown formatting.
     const html = text
+      .replace(/\[topic:(.*?)\]/g, '<button class="text-blue-600 hover:underline font-semibold focus:outline-none" data-topic="$1">$1</button>')
       .replace(/^\s*# (.*)/gm, '<h1 class="text-2xl font-bold my-4">$1</h1>')
       .replace(/^\s*## (.*)/gm, '<h2 class="text-xl font-semibold my-3">$1</h2>')
       .replace(/^\s*### (.*)/gm, '<h3 class="text-lg font-semibold my-2">$1</h3>')
@@ -243,6 +323,37 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
     );
   }
 
+  const renderDetailedTopicView = () => {
+    return (
+      <div>
+        <button
+          onClick={() => setDetailedTopic(null)}
+          className="mb-4 inline-flex items-center text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          Back to Study Guide
+        </button>
+        <h3 className="text-2xl font-bold text-gray-800 border-b-2 border-blue-200 pb-2 mb-4">{detailedTopic}</h3>
+        {isDetailLoading && (
+            <div className="flex items-center space-x-2 text-gray-500 animate-pulse">
+              <svg className="h-5 w-5 text-blue-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Digging deeper into {detailedTopic}...</span>
+            </div>
+        )}
+        {detailError && <p className="text-red-600">{detailError}</p>}
+        {detailedContent && (
+          <div
+            className="prose max-w-none text-gray-800"
+            dangerouslySetInnerHTML={parseMarkdown(detailedContent)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4"
@@ -271,40 +382,44 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ course, onClose, 
           </button>
         </div>
 
-        <div className="p-6">
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-               <h4 className="font-bold text-blue-800">Interactive Study Tools</h4>
-               <p className="text-sm text-blue-700">Generate a complete study guide for this course.</p>
-            </div>
-            {isGeneratingGuide ? (
-              <div className="text-blue-700 font-semibold text-center">
-                <p>Generating guide...</p>
-                <p className="text-xs">({generationProgress} / {details.courseContent.length} units complete)</p>
-              </div>
-            ) : (
-               <button 
-                  onClick={showStudyGuide ? () => setShowStudyGuide(false) : handleGenerateFullGuide}
-                  className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-blue-300 disabled:cursor-not-allowed flex-shrink-0"
-                  disabled={isGeneratingGuide}
-                >
-                  {showStudyGuide ? 'Back to Syllabus View' : 'Generate Full Study Guide'}
-                </button>
-            )}
-          </div>
-
-          {showStudyGuide ? (
-            renderFullStudyGuide()
-          ) : (
+        <div className="p-6" ref={contentRef}>
+          {detailedTopic ? renderDetailedTopicView() : (
             <>
-              {renderSection("Course Objectives", details.courseObjectives)}
-              {renderUnits(details.courseContent)}
-              {renderLabProblems(details.labPrograms)}
-              {renderSection("Text Books", details.textBooks)}
-              {renderSection("Reference Books", details.referenceBooks)}
-              {renderSection("Web Resources", details.webResources)}
-              {renderSection("Suggestive Laboratory Experiments", details.suggestiveLabs)}
-              {renderSection("Hardware", details.labHardware)}
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                   <h4 className="font-bold text-blue-800">Interactive Study Tools</h4>
+                   <p className="text-sm text-blue-700">Generate a complete study guide for this course or click on topics within a unit to learn more.</p>
+                </div>
+                {isGeneratingGuide ? (
+                  <div className="text-blue-700 font-semibold text-center">
+                    <p>Generating guide...</p>
+                    <p className="text-xs">({generationProgress} / {details.courseContent.length} units complete)</p>
+                  </div>
+                ) : (
+                   <button 
+                      onClick={showStudyGuide ? () => setShowStudyGuide(false) : handleGenerateFullGuide}
+                      className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors shadow-md disabled:bg-blue-300 disabled:cursor-not-allowed flex-shrink-0"
+                      disabled={isGeneratingGuide}
+                    >
+                      {showStudyGuide ? 'Back to Syllabus View' : 'Generate Full Study Guide'}
+                    </button>
+                )}
+              </div>
+
+              {showStudyGuide ? (
+                renderFullStudyGuide()
+              ) : (
+                <>
+                  {renderSection("Course Objectives", details.courseObjectives)}
+                  {renderUnits(details.courseContent)}
+                  {renderLabProblems(details.labPrograms)}
+                  {renderSection("Text Books", details.textBooks)}
+                  {renderSection("Reference Books", details.referenceBooks)}
+                  {renderSection("Web Resources", details.webResources)}
+                  {renderSection("Suggestive Laboratory Experiments", details.suggestiveLabs)}
+                  {renderSection("Hardware", details.labHardware)}
+                </>
+              )}
             </>
           )}
         </div>
