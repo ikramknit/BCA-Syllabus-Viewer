@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -11,25 +12,13 @@
   "imports": {
     "react/": "https://aistudiocdn.com/react@^19.1.1/",
     "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.21.0"
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
-    <script>
-      // Polyfill for process.env in a browser environment to prevent startup errors.
-      if (typeof window.process === 'undefined') {
-        window.process = {
-          env: {
-            // NOTE: The hosting environment is expected to populate this with a valid API key.
-            API_KEY: ""
-          }
-        };
-      }
-    </script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

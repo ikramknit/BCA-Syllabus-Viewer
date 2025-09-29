@@ -36,7 +36,7 @@ const SyllabusTable: React.FC<SyllabusTableProps> = ({ semester, onCourseSelect 
               className={`${course.details ? 'cursor-pointer hover:bg-blue-50' : 'hover:bg-gray-50'} transition-colors duration-150`}
               aria-label={course.details ? `View details for ${course.courseTitle}`: course.courseTitle}
               tabIndex={course.details ? 0 : -1}
-              onKeyDown={(e) => { if (e.key === 'Enter' && course.details) onCourseSelect(course) }}
+              onKeyPress={(e) => { if (e.key === 'Enter' && course.details) onCourseSelect(course) }}
             >
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.paper}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseCode}</td>
