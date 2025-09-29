@@ -1,12 +1,12 @@
-
 import React from 'react';
-import { Semester } from '../types';
+import { Semester, Course } from '../types';
 
 interface SyllabusTableProps {
   semester: Semester;
+  onCourseSelect: (course: Course) => void;
 }
 
-const SyllabusTable: React.FC<SyllabusTableProps> = ({ semester }) => {
+const SyllabusTable: React.FC<SyllabusTableProps> = ({ semester, onCourseSelect }) => {
   return (
     <div className="overflow-x-auto">
        <div className="mb-4 flex justify-between items-center">
@@ -30,7 +30,14 @@ const SyllabusTable: React.FC<SyllabusTableProps> = ({ semester }) => {
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {semester.courses.map((course, index) => (
-            <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+            <tr 
+              key={index} 
+              onClick={() => course.details && onCourseSelect(course)}
+              className={`${course.details ? 'cursor-pointer hover:bg-blue-50' : 'hover:bg-gray-50'} transition-colors duration-150`}
+              aria-label={course.details ? `View details for ${course.courseTitle}`: course.courseTitle}
+              tabIndex={course.details ? 0 : -1}
+              onKeyPress={(e) => { if (e.key === 'Enter' && course.details) onCourseSelect(course) }}
+            >
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.paper}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseCode}</td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.courseType}</td>

@@ -1,17 +1,28 @@
-
 import React, { useState, useCallback } from 'react';
 import { syllabusData } from './data/syllabusData';
 import Header from './components/Header';
 import SemesterTabs from './components/SemesterTabs';
 import SyllabusTable from './components/SyllabusTable';
 import Footer from './components/Footer';
-import { Semester } from './types';
+import CourseDetailModal from './components/CourseDetailModal';
+import { Semester, Course } from './types';
 
 const App: React.FC = () => {
   const [activeSemesterId, setActiveSemesterId] = useState<string>(syllabusData[0].id);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   const handleSelectSemester = useCallback((id: string) => {
     setActiveSemesterId(id);
+  }, []);
+
+  const handleCourseSelect = useCallback((course: Course) => {
+    if (course.details) {
+      setSelectedCourse(course);
+    }
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedCourse(null);
   }, []);
 
   const activeSemester = syllabusData.find(sem => sem.id === activeSemesterId) as Semester;
@@ -34,12 +45,16 @@ const App: React.FC = () => {
 
           <div className="p-4 md:p-6">
             {activeSemester && (
-              <SyllabusTable semester={activeSemester} />
+              <SyllabusTable semester={activeSemester} onCourseSelect={handleCourseSelect} />
             )}
           </div>
         </div>
         <Footer />
       </main>
+      
+      {selectedCourse && (
+        <CourseDetailModal course={selectedCourse} onClose={handleCloseModal} />
+      )}
     </div>
   );
 };
