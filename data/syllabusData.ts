@@ -86,7 +86,40 @@ export const syllabusData: Syllabus = [
       },
       { paper: '3', courseCode: '0122303', courseType: 'CCO-2', courseTitle: 'Computer Architecture', credit: '5', ltp: '3-0-4', marks: { ie: '25', prc: '25', ue: '50' }, minMarks: { ue_p_ue: '8/17', total: '40' } },
       { paper: '4', courseCode: '0122304', courseType: 'AEC-1', courseTitle: 'General English - I', credit: '2', ltp: '1-1-0', marks: { ie: '25', ue: '75' }, minMarks: { ue_p_ue: '25', total: '40' } },
-      { paper: '5', courseCode: '0122305', courseType: 'MDE', courseTitle: 'IKS-Indian Knowledge System', credit: '2', ltp: '2-0-0', marks: { ie: '25', ue: '75' }, minMarks: { ue_p_ue: '25', total: '40' } },
+      { 
+        paper: '5', 
+        courseCode: '0122305', 
+        courseType: 'MDE', 
+        courseTitle: 'IKS-Indian Knowledge System', 
+        credit: '2', 
+        ltp: '2-0-0', 
+        marks: { ie: '25', ue: '75' }, 
+        minMarks: { ue_p_ue: '25', total: '40' },
+        details: {
+          courseObjectives: [
+            "To introduce students to the rich heritage of Indian Knowledge Systems (IKS).",
+            "To foster an appreciation for India's foundational contributions to various fields of knowledge.",
+            "To explore the relevance of traditional Indian wisdom in the contemporary world.",
+            "To encourage critical thinking about the interplay between traditional and modern knowledge systems."
+          ],
+          courseContent: [
+            { unit: 'I', title: 'Introduction to Indian Knowledge Systems', description: "Definition, scope, and significance of IKS. Sources of IKS (Vedas, Upanishads, Puranas, etc.). The concept of 'Darshana' (philosophy). Overview of different schools of Indian philosophy (Nyaya, Vaisheshika, Samkhya, Yoga, Mimamsa, Vedanta)." },
+            { unit: 'II', title: 'Science and Technology in Ancient India', description: "Contributions to Mathematics: The concept of zero, the decimal system, algebra (Bijaganita), geometry (Sulbasutras). Astronomy: Planetary models, astronomical calculations in Siddhantic texts. Medicine: Ayurveda - principles of Tridosha, Charaka Samhita, Sushruta Samhita and its contributions to surgery. Metallurgy and Chemistry (Rasayana)." },
+            { unit: 'III', title: 'Arts, Society, and Governance', description: "Indian architecture: Temple architecture, principles of Vastu Shastra, town planning in ancient India (e.g., Harappan civilization). Performing arts: Classical music (Gandharva Veda), dance (Natya Shastra), and drama. Indian literature: The Vedas, Upanishads, Epics (Ramayana, Mahabharata), and classical Sanskrit literature. Principles of governance and ethics: Concepts of Dharma, Artha, Kama, Moksha; insights from Arthashastra and Dharmaśāstras." },
+            { unit: 'IV', title: 'Health, Environment, and Modern Relevance', description: "Principles of Yoga and meditation for holistic well-being as described in the Yoga Sutras of Patanjali. Traditional Indian ecological wisdom and sustainable practices. The relevance of IKS in modern fields like cognitive science, environmental studies, and management. Case studies on the application of IKS principles today." }
+          ],
+          textBooks: [
+            "Kapoor, Kapil. Indian Knowledge Systems. D.K. Printworld (P) Ltd, 2012.",
+            "Subbarayappa, B. V. A Historical Perspective of Science in India. Rupa & Co, 2013."
+          ],
+          referenceBooks: [
+            "Basham, A.L. The Wonder That Was India. Rupa Publications, 2010.",
+            "Vivekananda, Swami. Complete Works of Swami Vivekananda. Advaita Ashrama.",
+            "Kautilya. The Arthashastra. Translated by L.N. Rangarajan, Penguin Classics, 1992.",
+            "Patanjali. The Yoga Sutras of Patanjali. Various translations available (e.g., by Swami Satchidananda or B.K.S. Iyengar)."
+          ]
+        }
+      },
       { paper: '6', courseCode: '0122306', courseType: 'VAC', courseTitle: 'Environmental Science and Sustainability', credit: '2', ltp: '2-0-0', marks: { ie: '25', ue: '75' }, minMarks: { ue_p_ue: '25', total: '40' } },
       { paper: '7', courseCode: '0122307', courseType: 'Bridge Course', courseTitle: 'Optional: Basic Mathematics', credit: 'Qualify', ltp: '3-1-0', marks: { ie: '25', ue: '75' }, minMarks: { ue_p_ue: '25', total: '40 N.A.' } },
     ],
