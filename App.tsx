@@ -49,7 +49,7 @@ const App: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         const canvas = await html2canvas(element, { 
-          scale: 2,
+          scale: 1, // Reduced scale to prevent canvas size errors
           useCORS: true, 
           windowWidth: element.scrollWidth,
           windowHeight: element.scrollHeight
